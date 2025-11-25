@@ -4,17 +4,17 @@ import { Sidebar, Page } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ApplicationsView } from './components/ApplicationsView';
 import { StatisticsView } from './components/StatisticsView';
-import { IntegrationView } from './components/IntegrationView';
 import { LoginView } from './components/LoginView';
 import { ResetPasswordView } from './components/ResetPasswordView';
 import { JobsView } from './components/JobsView';
 import { DashboardView } from './components/DashboardView';
+import { LandingPage } from './components/LandingPage';
 import { MOCK_JOBS, MOCK_PORTALS } from './constants';
 import type { Job, JobPortal } from './types';
 import { BriefcaseIcon } from './components/Icons';
 
 
-type AuthState = 'unauthenticated' | 'requiresPasswordReset' | 'authenticated';
+type AuthState = 'landing' | 'unauthenticated' | 'requiresPasswordReset' | 'authenticated';
 
 const Placeholder = ({ title }: { title: string }) => (
   <div>
@@ -37,11 +37,10 @@ interface MainLayoutProps {
     toggleFavorite: (id: number) => void;
     portals: JobPortal[];
     togglePortalConnection: (name: string) => void;
-    addPortal: (name: string, email?: string) => void;
-    updatePortal: (portal: JobPortal) => void;
+    addPortal: (name: string) => void;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, jobs, addJob, updateJob, toggleFavorite, portals, togglePortalConnection, addPortal, updatePortal }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, jobs, addJob, updateJob, toggleFavorite, portals, togglePortalConnection, addPortal }) => {
     const [activePage, setActivePage] = useState<Page>('Dashboard');
     const [isSidebarOpen, setSidebarOpen] = useState(true);
 
@@ -50,11 +49,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, jobs, addJob, updateJ
             case 'Dashboard':
                 return <DashboardView portals={portals} togglePortalConnection={togglePortalConnection} addPortal={addPortal} />;
             case 'Jobs':
-                return <JobsView jobs={jobs} addJob={addJob} updateJob={updateJob} toggleFavorite={toggleFavorite} portals={portals} />;
+                return <JobsView jobs={jobs} addJob={addJob} updateJob={updateJob} toggleFavorite={toggleFavorite} />;
             case 'Applications':
-                return <ApplicationsView jobs={jobs} />;
-            case 'Integration':
-                return <IntegrationView portals={portals} togglePortalConnection={togglePortalConnection} addPortal={addPortal} updatePortal={updatePortal} />;
+                return <ApplicationsView />;
+            case 'Statistics':
+                return <StatisticsView />;
             case 'Message':
             case 'News':
                 return <Placeholder title={activePage} />;
@@ -77,14 +76,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, jobs, addJob, updateJ
 }
 
 const App: React.FC = () => {
-    const [authState, setAuthState] = useState<AuthState>('unauthenticated');
+    const [authState, setAuthState] = useState<AuthState>('landing');
     const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
-    const [portals, setPortals] = useState<JobPortal[]>(MOCK_PORTALS.map(p => ({
-        ...p,
-        email: p.isConnected ? 'recruiter@company.com' : '',
-        websiteUrl: p.isConnected ? `https://www.${p.name.toLowerCase()}.com/company-profile` : '',
-        autoPost: true
-    })));
+    const [portals, setPortals] = useState<JobPortal[]>(MOCK_PORTALS);
 
     // Simulate real-time data updates for connected portals
     useEffect(() => {
@@ -116,25 +110,13 @@ const App: React.FC = () => {
     };
 
     const handleLogout = () => {
-        setAuthState('unauthenticated');
+        setAuthState('landing');
     };
 
     const addJob = (newJobData: Omit<Job, 'id'>) => {
-        // Auto-generate mock links for connected portals if the status is 'Open'
-        let postedLinks: { portal: string; url: string }[] = [];
-        if (newJobData.status === 'Open') {
-            postedLinks = portals
-                .filter(p => p.isConnected && p.autoPost !== false)
-                .map(p => ({
-                    portal: p.name,
-                    url: `https://www.${p.name.toLowerCase().replace(/\s/g, '')}.com/jobs/view/${Math.floor(Math.random() * 100000)}`
-                }));
-        }
-
         const newJob: Job = {
             id: Date.now(),
             ...newJobData,
-            postedLinks
         };
         setJobs(prevJobs => [newJob, ...prevJobs]);
     };
@@ -148,35 +130,24 @@ const App: React.FC = () => {
     };
 
     const togglePortalConnection = (name: string) => {
-        setPortals(prevPortals => prevPortals.map(p => p.name === name ? { 
-            ...p, 
-            isConnected: !p.isConnected,
-            // If connecting, add default mock data if missing
-            email: !p.isConnected && !p.email ? 'recruiter@company.com' : p.email,
-            websiteUrl: !p.isConnected && !p.websiteUrl ? `https://www.${p.name.toLowerCase()}.com` : p.websiteUrl
-        } : p));
+        setPortals(prevPortals => prevPortals.map(p => p.name === name ? { ...p, isConnected: !p.isConnected } : p));
     };
 
-    const addPortal = (name: string, email?: string) => {
+    const addPortal = (name: string) => {
         const newPortal: JobPortal = {
             name,
             icon: <BriefcaseIcon />, // Default icon for new portals
-            isConnected: !!email, // If email is provided, assume connected via Add Modal
+            isConnected: false,
             views: 0,
             applications: 0,
-            color: 'bg-gray-500', 
-            email: email || '',
-            websiteUrl: '',
-            autoPost: true
+            color: 'bg-gray-500', // Default color
         };
         setPortals(prev => [...prev, newPortal]);
     };
 
-    const updatePortal = (updatedPortal: JobPortal) => {
-        setPortals(prev => prev.map(p => p.name === updatedPortal.name ? updatedPortal : p));
-    };
-
     switch (authState) {
+        case 'landing':
+            return <LandingPage onLoginClick={() => setAuthState('unauthenticated')} />;
         case 'unauthenticated':
             return <LoginView onLogin={handleLogin} />;
         case 'requiresPasswordReset':
@@ -192,11 +163,10 @@ const App: React.FC = () => {
                     portals={portals}
                     togglePortalConnection={togglePortalConnection}
                     addPortal={addPortal}
-                    updatePortal={updatePortal}
                 />
             );
         default:
-             return <LoginView onLogin={handleLogin} />;
+             return <LandingPage onLoginClick={() => setAuthState('unauthenticated')} />;
     }
 };
 

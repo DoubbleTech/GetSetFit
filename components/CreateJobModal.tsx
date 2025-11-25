@@ -1,14 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { XIcon, DotsVerticalIcon } from './Icons';
-import { Job, JobPortal } from '../types';
+import { Job } from '../types';
+import { generateJobDescription } from '../services/geminiService';
 
 interface CreateJobModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (jobData: any, action: 'draft' | 'post') => void;
     jobToEdit?: Job | null;
-    connectedPortals?: JobPortal[];
 }
 
 const initialFormState = {
@@ -56,9 +56,10 @@ const FormTextarea: React.FC<{ id: string, label: string, value: string, onChang
     </div>
 );
 
-export const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onSubmit, jobToEdit, connectedPortals = [] }) => {
+export const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose, onSubmit, jobToEdit }) => {
     const [formData, setFormData] = useState(initialFormState);
     const [isDropdownOpen, setDropdownOpen] = useState(false);
+    const [isGenerating, setIsGenerating] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,15 +117,28 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose,
         }
     };
 
+    const handleAiGenerate = async () => {
+        if (!formData.title || !formData.experience || !formData.location) {
+            alert("Please fill in Job Title, Experience, and Location to use AI generation.");
+            return;
+        }
+        setIsGenerating(true);
+        try {
+            const description = await generateJobDescription(formData.title, formData.experience, formData.location);
+            setFormData(prev => ({ ...prev, description }));
+        } catch (error) {
+            alert("Failed to generate description. Please try again.");
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleSubmit = (action: 'draft' | 'post') => {
         onSubmit(formData, action);
         setFormData(initialFormState); 
     };
 
     if (!isOpen) return null;
-
-    // Filter active portals that have auto-post enabled (or default true)
-    const activePortals = connectedPortals.filter(p => p.isConnected && p.autoPost !== false);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -141,7 +155,37 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose,
                         <FormInput id="experience" label="Experience Required" value={formData.experience} onChange={handleChange} />
                     </div>
                     <FormInput id="location" label="Country and City" value={formData.location} onChange={handleChange} />
-                    <FormTextarea id="description" label="Job Description" value={formData.description} onChange={handleChange} rows={5} />
+                    
+                    {/* Description with AI Button */}
+                    <div>
+                        <div className="flex justify-between items-center mb-1">
+                            <label htmlFor="description" className="block text-sm font-medium text-gray-700">Job Description</label>
+                            <button 
+                                type="button" 
+                                onClick={handleAiGenerate} 
+                                disabled={isGenerating}
+                                className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full hover:bg-indigo-200 flex items-center transition-colors disabled:opacity-50"
+                            >
+                                {isGenerating ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-3 w-3 text-indigo-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Writing...
+                                    </>
+                                ) : '✨ Auto-Write with AI'}
+                            </button>
+                        </div>
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows={5}
+                            value={formData.description}
+                            onChange={handleChange}
+                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                    </div>
                     
                     {/* Media Upload */}
                     <div>
@@ -199,71 +243,51 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({ isOpen, onClose,
                     <FormTextarea id="salaryAndPerks" label="Salary, Perks and Benefits" value={formData.salaryAndPerks} onChange={handleChange} />
                 
                 </div>
-                <div className="p-4 border-t border-gray-200 flex justify-between items-center">
-                    <div className="flex flex-col">
-                         {activePortals.length > 0 ? (
-                             <div className="flex items-center gap-1 text-xs text-gray-500">
-                                 <span>Posting to:</span>
-                                 <div className="flex -space-x-1">
-                                     {activePortals.slice(0, 5).map(p => (
-                                         <div key={p.name} className="w-5 h-5 rounded-full bg-gray-100 border border-white flex items-center justify-center text-[8px] overflow-hidden" title={p.name}>
-                                            {p.icon}
-                                         </div>
-                                     ))}
-                                 </div>
-                                 {activePortals.length > 5 && <span>+{activePortals.length - 5} more</span>}
-                             </div>
-                         ) : (
-                             <span className="text-xs text-gray-400">No portals connected for auto-posting.</span>
-                         )}
-                    </div>
-                    
-                    <div className="flex space-x-3">
-                        <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 font-semibold">
-                            Cancel
+                <div className="p-4 border-t border-gray-200 flex justify-end items-center space-x-3">
+                    <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 font-semibold">
+                        Cancel
+                    </button>
+                    <div className="flex rounded-md shadow-sm">
+                        <button
+                            type="button"
+                            onClick={() => handleSubmit('draft')}
+                            className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-indigo-600 text-white hover:bg-indigo-700 font-semibold text-sm"
+                        >
+                            {jobToEdit ? 'Update as Draft' : 'Save as Draft'}
                         </button>
-                        <div className="flex rounded-md shadow-sm">
+                        <div className="relative -ml-px block" ref={dropdownRef}>
                             <button
                                 type="button"
-                                onClick={() => handleSubmit('draft')}
-                                className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-indigo-600 text-white hover:bg-indigo-700 font-semibold text-sm"
+                                onClick={() => setDropdownOpen(!isDropdownOpen)}
+                                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-indigo-600 text-white hover:bg-indigo-700"
+                                aria-haspopup="true"
+                                aria-expanded={isDropdownOpen}
                             >
-                                {jobToEdit ? 'Update as Draft' : 'Save as Draft'}
+                                <span className="sr-only">Open options</span>
+                                <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
                             </button>
-                            <div className="relative -ml-px block" ref={dropdownRef}>
-                                <button
-                                    type="button"
-                                    onClick={() => setDropdownOpen(!isDropdownOpen)}
-                                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-indigo-600 text-white hover:bg-indigo-700"
-                                    aria-haspopup="true"
-                                    aria-expanded={isDropdownOpen}
-                                >
-                                    <span className="sr-only">Open options</span>
-                                    <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
-                                </button>
-                                {isDropdownOpen && (
-                                    <div className="origin-top-right absolute right-0 bottom-full mb-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-                                        <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    handleSubmit('post');
-                                                    setDropdownOpen(false);
-                                                }}
-                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                                                role="menuitem"
-                                            >
-                                                {jobToEdit ? 'Update and Post' : 'Save and Post Job'}
-                                            </button>
-                                            <p className="px-4 py-2 text-xs text-gray-500">
-                                            This will post the job to all connected portals.
-                                            </p>
-                                        </div>
+                            {isDropdownOpen && (
+                                <div className="origin-top-right absolute right-0 bottom-full mb-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                                    <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                handleSubmit('post');
+                                                setDropdownOpen(false);
+                                            }}
+                                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                            role="menuitem"
+                                        >
+                                            {jobToEdit ? 'Update and Post' : 'Save and Post Job'}
+                                        </button>
+                                         <p className="px-4 py-2 text-xs text-gray-500">
+                                           This will post the job to all connected portals.
+                                        </p>
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

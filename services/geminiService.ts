@@ -9,10 +9,7 @@ export const rankCandidates = async (job: Job, candidates: Candidate[]) => {
   const prompt = `
     As an expert technical recruiter, your task is to analyze the following job description and a list of candidate resumes. 
     Based on the requirements in the job description, rank the candidates from best fit to worst fit.
-    
-    For each candidate provide:
-    1. A relevance score from 0 to 100.
-    2. A brief, one-sentence reasoning for each candidate's ranking, focusing on their most relevant skills, experience, and location.
+    Provide a brief, one-sentence reasoning for each candidate's ranking, focusing on their most relevant skills, experience, and location.
 
     JOB DESCRIPTION:
     Title: ${job.title}
@@ -21,7 +18,7 @@ export const rankCandidates = async (job: Job, candidates: Candidate[]) => {
     CANDIDATE RESUMES:
     ${candidateResumes}
 
-    Return the ranking as a JSON array. Each object in the array should contain the candidate's ID (as a number), reasoning, and relevanceScore.
+    Return the ranking as a JSON array. Each object in the array should contain the candidate's ID (as a number) and your reasoning for their fit.
   `;
 
   try {
@@ -37,19 +34,18 @@ export const rankCandidates = async (job: Job, candidates: Candidate[]) => {
             properties: {
               candidateId: { type: Type.NUMBER },
               reasoning: { type: Type.STRING },
-              relevanceScore: { type: Type.NUMBER },
             },
-            required: ['candidateId', 'reasoning', 'relevanceScore'],
+            required: ['candidateId', 'reasoning'],
           },
         },
       },
     });
 
-    const jsonText = response.text.trim();
+    const jsonText = response.text || "[]";
     return JSON.parse(jsonText);
   } catch (error) {
     console.error("Error ranking candidates:", error);
-    throw new Error("Failed to get AI-powered candidate suggestions.");
+    return [];
   }
 };
 
@@ -58,7 +54,7 @@ export const generateOfferLetterDraft = async (job: Job, candidate: Candidate) =
     Generate a friendly and professional job offer confirmation message for a candidate.
     The message should be concise and easily editable.
     
-    Company Name: (Implied, not specified)
+    Company Name: AI Recruit
     Job Title: ${job.title}
     Candidate Name: ${candidate.name}
 
@@ -69,95 +65,38 @@ export const generateOfferLetterDraft = async (job: Job, candidate: Candidate) =
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
-    return response.text;
+    return response.text || "";
   } catch (error) {
     console.error("Error generating offer letter:", error);
-    throw new Error("Failed to generate an offer letter draft.");
+    return "Dear Candidate, We are pleased to offer you the position. (AI generation failed)";
   }
 };
 
-export const generateInterviewQuestions = async (job: Job, candidate: Candidate) => {
-  const prompt = `
-    You are a hiring manager interviewing ${candidate.name} for the position of ${job.title}.
+export const generateJobDescription = async (title: string, experience: string, location: string) => {
+    const prompt = `
+      Write a professional, engaging, and structured job description for the following role:
+      
+      Job Title: ${title}
+      Experience Level: ${experience}
+      Location: ${location}
+      
+      Include the following sections:
+      1. Role Overview
+      2. Key Responsibilities
+      3. Required Qualifications
+      4. Why Join Us
+      
+      Keep it within 200 words, professional yet inviting.
+    `;
     
-    JOB DESCRIPTION:
-    ${job.description}
-
-    CANDIDATE RESUMES:
-    ${candidate.resume}
-
-    Generate a set of interview questions specifically tailored to this candidate.
-    1. Identify 3 Technical Questions based on gaps or specific technologies mentioned in their resume versus the job requirements.
-    2. Identify 2 Behavioral Questions based on their experience level.
-    3. Provide a "Key signal to look for" for each question.
-
-    Format the output as a structured JSON object with categories.
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            technicalQuestions: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  question: { type: Type.STRING },
-                  signal: { type: Type.STRING },
-                }
-              }
-            },
-            behavioralQuestions: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    question: { type: Type.STRING },
-                    signal: { type: Type.STRING },
-                  }
-                }
-              }
-          }
-        }
-      }
-    });
-    return JSON.parse(response.text);
-  } catch (error) {
-    console.error("Error generating interview questions:", error);
-    throw new Error("Failed to generate interview questions.");
-  }
-}
-
-export const verifyCompanyIntegration = async (url: string) => {
-  const prompt = `
-    Verify if the following URL is a valid company page (like LinkedIn, Facebook, Website).
-    URL: ${url}
-    
-    If it is valid, provide a summary starting with "Verified: [Company Name] - [Brief Description]".
-    If it is not found or invalid, say "Error: Could not verify company details."
-  `;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-      config: {
-        tools: [{ googleSearch: {} }],
-      },
-    });
-    
-    return {
-        text: response.text,
-        groundingChunks: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
-    };
-  } catch (error) {
-    console.error("Error verifying company:", error);
-    throw new Error("Failed to verify company page using AI.");
-  }
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      return response.text || "";
+    } catch (error) {
+      console.error("Error generating job description:", error);
+      return "Failed to generate job description.";
+    }
 };

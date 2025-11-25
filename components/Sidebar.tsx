@@ -1,15 +1,15 @@
 
 import React from 'react';
-import { HomeIcon, BriefcaseIcon, ClipboardListIcon, ChatIcon, NewspaperIcon, CogIcon } from './Icons';
+import { HomeIcon, BriefcaseIcon, ClipboardListIcon, ChatIcon, ChartBarIcon, NewspaperIcon } from './Icons';
 
-export type Page = 'Dashboard' | 'Jobs' | 'Applications' | 'Message' | 'Integration' | 'News';
+export type Page = 'Dashboard' | 'Jobs' | 'Applications' | 'Message' | 'Statistics' | 'News';
 
 const navItems: { name: Page; icon: React.ReactNode }[] = [
     { name: 'Dashboard', icon: <HomeIcon /> },
     { name: 'Jobs', icon: <BriefcaseIcon /> },
     { name: 'Applications', icon: <ClipboardListIcon /> },
-    { name: 'Integration', icon: <CogIcon /> },
     { name: 'Message', icon: <ChatIcon /> },
+    { name: 'Statistics', icon: <ChartBarIcon /> },
     { name: 'News', icon: <NewspaperIcon /> },
 ];
 

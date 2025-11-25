@@ -1,18 +1,12 @@
 
 import React, { useState, useMemo } from 'react';
-import type { Job, JobPortal } from '../types';
+import type { Job } from '../types';
 import { SearchIcon, ViewGridIcon, ViewListIcon, PlusIcon } from './Icons';
 import { CreateJobModal } from './CreateJobModal';
 
 const HeartIcon = ({ filled, onClick }: { filled?: boolean; onClick: (e: React.MouseEvent) => void }) => (
     <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 cursor-pointer transition-colors ${filled ? 'text-red-500 fill-current' : 'text-gray-400 hover:text-red-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-    </svg>
-);
-
-const ExternalLinkIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
     </svg>
 );
 
@@ -31,17 +25,6 @@ const JobCard: React.FC<{ job: Job; onEdit: (job: Job) => void; onToggleFavorite
                 <h3 className="text-lg font-bold text-gray-800">{job.title}</h3>
                 <p className="text-sm text-gray-500 mt-1">{job.location} • {job.type}</p>
                  {job.closingDate && <p className="text-xs text-red-500 mt-2 font-medium">Closes: {job.closingDate}</p>}
-                
-                {job.postedLinks && job.postedLinks.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        {job.postedLinks.map((link, i) => (
-                            <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100 transition-colors">
-                                {link.portal} <span className="ml-1"><ExternalLinkIcon /></span>
-                            </a>
-                        ))}
-                    </div>
-                )}
-
                 <div className="mt-4 flex justify-between text-center">
                     <div>
                         <p className="text-xl font-bold text-indigo-600">{job.applications}</p>
@@ -79,13 +62,6 @@ const JobListItem: React.FC<{ job: Job; onEdit: (job: Job) => void; onToggleFavo
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                 {job.title}
                 {job.closingDate && <div className="text-xs text-red-500 mt-1">Closes: {job.closingDate}</div>}
-                {job.postedLinks && job.postedLinks.length > 0 && (
-                    <div className="flex gap-1 mt-1">
-                        {job.postedLinks.map((link, i) => (
-                             <span key={i} className="text-[10px] text-gray-500 bg-gray-100 px-1 rounded">{link.portal}</span>
-                        ))}
-                    </div>
-                )}
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{job.applications}</td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{job.shortlisted}</td>
@@ -105,10 +81,9 @@ interface JobsViewProps {
     addJob: (newJob: Omit<Job, 'id'>) => void;
     updateJob: (updatedJob: Job) => void;
     toggleFavorite: (id: number) => void;
-    portals: JobPortal[];
 }
 
-export const JobsView: React.FC<JobsViewProps> = ({ jobs, addJob, updateJob, toggleFavorite, portals }) => {
+export const JobsView: React.FC<JobsViewProps> = ({ jobs, addJob, updateJob, toggleFavorite }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -158,10 +133,7 @@ export const JobsView: React.FC<JobsViewProps> = ({ jobs, addJob, updateJob, tog
         }
         
         if (action === 'post') {
-            const activePortals = portals.filter(p => p.isConnected && p.autoPost !== false).map(p => p.name);
-            if(activePortals.length > 0) {
-                alert(`Job posted successfully to: ${activePortals.join(', ')}`);
-            }
+            console.log(`Simulating: Posting "${newJobData.title}" to connected job portals...`);
         }
 
         setIsModalOpen(false);
@@ -281,7 +253,6 @@ export const JobsView: React.FC<JobsViewProps> = ({ jobs, addJob, updateJob, tog
                 onClose={() => { setIsModalOpen(false); setJobToEdit(null); }}
                 onSubmit={handleCreateOrUpdateJob}
                 jobToEdit={jobToEdit}
-                connectedPortals={portals}
             />
         </>
     );

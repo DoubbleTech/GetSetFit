@@ -38,13 +38,11 @@ export interface Job {
   email?: string;
   gender?: string;
   salaryAndPerks?: string;
-  postedLinks?: { portal: string; url: string }[]; // New field for external job links
 }
 
 export interface AISuggestion {
   candidateId: number;
   reasoning: string;
-  relevanceScore: number;
 }
 
 export interface Application {
@@ -59,7 +57,4 @@ export interface JobPortal {
     views: number;
     applications: number;
     color: string;
-    email?: string;
-    websiteUrl?: string;
-    autoPost?: boolean; 
 }
