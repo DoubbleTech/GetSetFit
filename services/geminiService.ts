@@ -1,15 +1,43 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import type { Job, Candidate } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+/**
+ * World-class senior engineer approach:
+ * We do not initialize the AI client at the top level to avoid crashes 
+ * when the API_KEY is missing in the browser environment.
+ * Instead, we create an instance per-request or use a fallback.
+ */
+
+const getAIClient = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) return null;
+  return new GoogleGenAI({ apiKey });
+};
 
 export const rankCandidates = async (job: Job, candidates: Candidate[]) => {
+  const ai = getAIClient();
+
+  // Fallback to Backend if no client-side key
+  if (!ai) {
+    try {
+      const response = await fetch('/api/rank-candidates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job, candidates })
+      });
+      if (!response.ok) throw new Error('Backend request failed');
+      return await response.json();
+    } catch (error) {
+      console.error("Ranking error:", error);
+      return [];
+    }
+  }
+
   const candidateResumes = candidates.map(c => `CANDIDATE_ID: ${c.id}\nRESUME:\n${c.resume}`).join('\n---\n');
   const prompt = `
-    As an expert technical recruiter, your task is to analyze the following job description and a list of candidate resumes. 
-    Based on the requirements in the job description, rank the candidates from best fit to worst fit.
-    Provide a brief, one-sentence reasoning for each candidate's ranking, focusing on their most relevant skills, experience, and location.
+    Analyze the following job description and a list of candidate resumes. 
+    Rank candidates from best fit to worst fit.
+    Provide a brief, one-sentence reasoning for each ranking.
 
     JOB DESCRIPTION:
     Title: ${job.title}
@@ -17,13 +45,11 @@ export const rankCandidates = async (job: Job, candidates: Candidate[]) => {
 
     CANDIDATE RESUMES:
     ${candidateResumes}
-
-    Return the ranking as a JSON array. Each object in the array should contain the candidate's ID (as a number) and your reasoning for their fit.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -41,62 +67,67 @@ export const rankCandidates = async (job: Job, candidates: Candidate[]) => {
       },
     });
 
-    const jsonText = response.text || "[]";
-    return JSON.parse(jsonText);
+    return JSON.parse(response.text || "[]");
   } catch (error) {
-    console.error("Error ranking candidates:", error);
+    console.error("Client-side ranking error:", error);
     return [];
   }
 };
 
 export const generateOfferLetterDraft = async (job: Job, candidate: Candidate) => {
-  const prompt = `
-    Generate a friendly and professional job offer confirmation message for a candidate.
-    The message should be concise and easily editable.
-    
-    Company Name: AI Recruit
-    Job Title: ${job.title}
-    Candidate Name: ${candidate.name}
+  const ai = getAIClient();
 
-    Create a draft that congratulates the candidate and confirms their selection for the role.
-  `;
+  if (!ai) {
+    try {
+      const response = await fetch('/api/generate-offer-letter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job, candidate })
+      });
+      const data = await response.json();
+      return data.offerLetter || "Failed to generate offer.";
+    } catch (e) {
+      return "Error connecting to backend.";
+    }
+  }
+
+  const prompt = `Generate a job offer message for ${candidate.name} for the position of ${job.title} at Recruite Tree.`;
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return response.text || "";
+    return response.text || "Offer draft generation failed.";
   } catch (error) {
-    console.error("Error generating offer letter:", error);
-    return "Dear Candidate, We are pleased to offer you the position. (AI generation failed)";
+    return "Drafting failed.";
   }
 };
 
 export const generateJobDescription = async (title: string, experience: string, location: string) => {
-    const prompt = `
-      Write a professional, engaging, and structured job description for the following role:
-      
-      Job Title: ${title}
-      Experience Level: ${experience}
-      Location: ${location}
-      
-      Include the following sections:
-      1. Role Overview
-      2. Key Responsibilities
-      3. Required Qualifications
-      4. Why Join Us
-      
-      Keep it within 200 words, professional yet inviting.
-    `;
-    
+  const ai = getAIClient();
+
+  if (!ai) {
     try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
+      const response = await fetch('/api/generate-job-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, experience, location })
       });
-      return response.text || "";
-    } catch (error) {
-      console.error("Error generating job description:", error);
-      return "Failed to generate job description.";
+      const data = await response.json();
+      return data.description || "Failed to generate description.";
+    } catch (e) {
+      return "Backend connection error.";
     }
+  }
+
+  const prompt = `Write a 200-word job description for ${title} with ${experience} experience in ${location}.`;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+    });
+    return response.text || "Description generation failed.";
+  } catch (error) {
+    return "Auto-write failed.";
+  }
 };

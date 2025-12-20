@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FacebookIcon, TwitterIcon, LinkedInIcon } from './Icons';
 
@@ -12,7 +11,7 @@ const SignInForm: React.FC<{ onLogin: (password: string) => void }> = ({ onLogin
 
     return (
         <>
-            <h2 className="text-3xl font-bold">Welcome to AI Recruit</h2>
+            <h2 className="text-3xl font-bold">Welcome to Recruite Tree</h2>
             <p className="mt-2 text-violet-200">Sign in by entering information below</p>
             <form className="mt-8 space-y-6" onSubmit={(e) => { e.preventDefault(); onLogin(password); }}>
                 <div>
@@ -74,10 +73,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                         <div className="w-1/2 hidden lg:flex flex-col justify-between p-12 text-white relative">
                            <div>
                                 <div className="flex items-center space-x-3">
-                                    <div className="bg-violet-600 p-2 rounded-lg">
-                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                    </div>
-                                    <h1 className="text-2xl font-bold">AI Recruit</h1>
+                                    <img src="/media/logo.png" alt="Recruite Tree Logo" className="w-10 h-10 object-contain bg-white rounded-lg p-1" />
+                                    <h1 className="text-2xl font-bold">Recruite Tree</h1>
                                 </div>
                                 <h2 className="mt-12 text-3xl font-bold tracking-tight">Check the Status</h2>
                                 <p className="mt-4 text-violet-200">
@@ -92,7 +89,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                            <div className="mt-12 text-sm text-violet-300 flex items-center space-x-4">
                                <a href="#" className="hover:text-white">Privacy Policy</a>
                                <a href="#" className="hover:text-white">Contact</a>
-                               <span>© 2025 AI Recruit</span>
+                               <span>© 2025 Recruite Tree</span>
                            </div>
                            <div className="absolute bottom-0 left-0 w-full h-48 overflow-hidden opacity-50">
                                 <svg viewBox="0 0 500 150" preserveAspectRatio="none" className="absolute bottom-0 left-0 w-full h-full">

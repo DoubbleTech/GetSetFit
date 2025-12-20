@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { HomeIcon, BriefcaseIcon, ClipboardListIcon, ChatIcon, ChartBarIcon, NewspaperIcon } from './Icons';
 
@@ -26,8 +25,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, isO
 
     return (
         <aside className={`bg-indigo-900 text-white flex-shrink-0 transition-all duration-300 ease-in-out ${isOpen ? 'w-64' : 'w-0'} overflow-hidden`}>
-            <div className="flex items-center justify-center h-16 border-b border-white/10">
-                <h1 className="text-2xl font-bold">AI Recruit</h1>
+            <div className="flex items-center justify-center h-16 border-b border-white/10 space-x-2">
+                <img src="/media/logo.png" alt="Recruite Tree" className="w-8 h-8 object-contain" />
+                <h1 className="text-xl font-bold">Recruite Tree</h1>
             </div>
             <nav className="mt-6 px-4">
                 {navItems.map(item => (

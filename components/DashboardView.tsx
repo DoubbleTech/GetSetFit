@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { JobPortal } from '../types';
 import { XIcon, PlusIcon } from './Icons';
@@ -39,7 +38,7 @@ const PortalAuthModal: React.FC<{ portal: JobPortal, onClose: () => void, onConn
                          {React.cloneElement(portal.icon as React.ReactElement, { className: "w-12 h-12" })}
                     </div>
                     <p className="text-sm text-gray-500 text-center mb-6">
-                        Sign in to your {portal.name} account to integrate it with AI Recruit.
+                        Sign in to your {portal.name} account to integrate it with Recruite Tree.
                     </p>
                     <form onSubmit={handleLogin} className="space-y-4">
                          <div>
